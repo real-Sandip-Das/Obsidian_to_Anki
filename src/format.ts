@@ -33,13 +33,13 @@ let converter: Converter = new Converter({
 })
 
 function escapeHtml(unsafe: string): string {
-    return unsafe
-         .replace(/&/g, "&amp;")
-         .replace(/</g, "&lt;")
-         .replace(/>/g, "&gt;")
-         .replace(/"/g, "&quot;")
-         .replace(/'/g, "&#039;");
- }
+	return unsafe
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;")
+		.replace(/'/g, "&#039;");
+}
 
 export class FormatConverter {
 
@@ -69,7 +69,7 @@ export class FormatConverter {
 
 	obsidian_to_anki_math(note_text: string): string {
 		return note_text.replace(
-				c.OBS_DISPLAY_MATH_REGEXP, "\\[$1\\]"
+			c.OBS_DISPLAY_MATH_REGEXP, "\\[$1\\]"
 		).replace(
 			c.OBS_INLINE_MATH_REGEXP,
 			"\\($1\\)"
@@ -143,13 +143,22 @@ export class FormatConverter {
 		return note_text
 	}
 
+	anki_to_obsidian_math(note_text: string): string {
+		return note_text.replace(
+			/\\\[(.*?)\\\]/g, "$$$$$1$$$$"
+		).replace(
+			/\\\((.*?)\\\)/g, "$$$1$"
+		)
+	}
+
 	format(note_text: string, cloze: boolean, highlights_to_cloze: boolean): string {
 		note_text = this.obsidian_to_anki_math(note_text)
 		//Extract the parts that are anki math
+		console.log("Formatting note text: ", note_text) // TODO: remove this
 		let math_matches: string[]
 		let inline_code_matches: string[]
 		let display_code_matches: string[]
-		const add_highlight_css: boolean = note_text.match(c.OBS_DISPLAY_CODE_REGEXP) ? true : false;
+		// const add_highlight_css: boolean = note_text.match(c.OBS_DISPLAY_CODE_REGEXP) ? true : false;
 		[note_text, math_matches] = this.censor(note_text, ANKI_MATH_REGEXP, MATH_REPLACE);
 		[note_text, display_code_matches] = this.censor(note_text, c.OBS_DISPLAY_CODE_REGEXP, DISPLAY_CODE_REPLACE);
 		[note_text, inline_code_matches] = this.censor(note_text, c.OBS_CODE_REGEXP, INLINE_CODE_REPLACE);
@@ -163,17 +172,18 @@ export class FormatConverter {
 		note_text = this.formatLinks(note_text)
 		//Special for formatting highlights now, but want to avoid any == in code
 		note_text = note_text.replace(HIGHLIGHT_REGEXP, String.raw`<mark>$1</mark>`)
-		note_text = this.decensor(note_text, DISPLAY_CODE_REPLACE, display_code_matches, false)
-		note_text = this.decensor(note_text, INLINE_CODE_REPLACE, inline_code_matches, false)
-		note_text = converter.makeHtml(note_text)
+		note_text = this.decensor(note_text, DISPLAY_CODE_REPLACE, display_code_matches, true)
+		note_text = this.decensor(note_text, INLINE_CODE_REPLACE, inline_code_matches, true)
+		// note_text = converter.makeHtml(note_text)
 		note_text = this.decensor(note_text, MATH_REPLACE, math_matches, true).trim()
+		note_text = this.anki_to_obsidian_math(note_text)
 		// Remove unnecessary paragraph tag
 		if (note_text.startsWith(PARA_OPEN) && note_text.endsWith(PARA_CLOSE)) {
 			note_text = note_text.slice(PARA_OPEN.length, -1 * PARA_CLOSE.length)
 		}
-		if (add_highlight_css) {
-			note_text = '<link href="' + c.CODE_CSS_URL + '" rel="stylesheet">' + note_text
-		}
+		// if (add_highlight_css) {
+		// 	note_text = '<link href="' + c.CODE_CSS_URL + '" rel="stylesheet">' + note_text
+		// }
 		return note_text
 	}
 
